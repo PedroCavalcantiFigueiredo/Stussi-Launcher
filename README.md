@@ -6,96 +6,94 @@
   <img src="https://img.shields.io/badge/Steam-Launcher-ff4d4d" alt="Steam Launcher" />
 </p>
 
-A modern and stylized launcher for your Steam library, designed to give a premium, racing-inspired experience while keeping the interface clean and practical.
+Stussi Launcher é um aplicativo desktop para Windows, desenvolvido em Python com PySide6, pensado para oferecer uma experiência visual moderna, rápida e inspirada no universo de corrida e performance.
 
-## ✨ Features
+## ✨ Principais recursos
 
-- Browse installed Steam games directly from your library
-- Search and sort games by name, size, or last played time
-- Fullscreen and windowed modes
-- Smooth animated cards and polished UI
-- Custom startup sound and splash screen
-- Support for high-resolution and ultra-wide displays
-- Fast launch via Steam game URLs
+- Visualização da biblioteca Steam instalada
+- Busca e ordenação de jogos por nome, tamanho ou último uso
+- Modo tela cheia e modo janela
+- Interface com cards animados e estilo polido
+- Tela inicial personalizada com som e splash screen
+- Compatibilidade com telas largas e resoluções altas
+- Abertura rápida dos jogos diretamente pelo Steam
 
-## 🧩 About the project
+## 🧩 Sobre o projeto
 
-Stussi Launcher is a Windows desktop application built with Python and PySide6. It reads Steam manifest files to detect installed games and presents them in an elegant visual interface.
+O projeto foi criado para reunir em uma única interface os jogos instalados no Steam, mantendo o visual elegante e organizado. Ele lê os manifestos do Steam para identificar os jogos disponíveis e exibe uma experiência mais imersiva para o usuário.
 
-The project is especially useful for users who want a more immersive launcher experience for their Steam collection.
+## 🛠️ Requisitos
 
-## 🛠️ Requirements
+- Python 3.10 ou superior
+- Steam instalado e com sessão iniciada
+- Sistema operacional Windows
 
-- Python 3.10 or newer
-- Steam installed and logged in
-- Windows operating system
-
-Install the dependencies:
+Instale as dependências com:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## ▶️ How to run
+## ▶️ Como executar
 
-From the project folder:
+Na pasta do projeto, rode:
 
 ```bash
 python main.py
 ```
 
-## 📦 Build executable
+## 📦 Como gerar o executável
 
-If you want to generate a standalone Windows executable:
+Para criar um executável standalone no Windows:
 
 ```bash
 pyinstaller StussiLauncher.spec
 ```
 
-The output will be created in the `dist/` folder.
+O resultado será gerado na pasta `dist/`.
 
-## 📁 Project structure
+## 📁 Estrutura do projeto
 
 ```text
 .
-├── main.py               # Main application UI and logic
-├── steam_utils.py        # Steam discovery and launch helpers
-├── requirements.txt      # Python dependencies
-├── StussiLauncher.spec   # PyInstaller build configuration
-├── icon.ico              # App icon
-├── somstussi.wav         # Startup sound
-└── README.md             # Project documentation
+├── main.py               # Interface principal e lógica da aplicação
+├── steam_utils.py        # Funções para descobrir e iniciar jogos do Steam
+├── requirements.txt      # Dependências do projeto
+├── StussiLauncher.spec   # Configuração do PyInstaller
+├── icon.ico              # Ícone da aplicação
+├── somstussi.wav         # Som de inicialização
+└── README.md             # Documentação do projeto
 ```
 
-## 🎨 UI notes
+## 🎨 Estilo da interface
 
-The launcher uses a dark racing-inspired visual theme with:
+A aplicação utiliza um visual escuro com identidade de performance, com:
 
-- navy and red accents
-- rounded cards and subtle glow effects
-- modern typography and animated overlays
-- fullscreen-first presentation
+- destaque em azul-marinho e vermelho
+- cards arredondados com brilho sutil
+- animações suaves para navegação e interação
+- foco em apresentação em tela cheia
 
-## 🔎 Troubleshooting
+## 🔎 Solução de problemas
 
-- If no games appear, confirm that Steam is installed and that your library manifests exist.
-- If the launcher does not launch correctly, ensure all dependencies are installed.
-- For packaging issues, verify that the assets referenced by the spec file are present in the project folder.
+- Se nenhum jogo aparecer, verifique se o Steam está instalado corretamente e se a biblioteca possui jogos.
+- Se o aplicativo não iniciar, confirme que todas as dependências foram instaladas.
+- Se houver erro na geração do executável, verifique se os arquivos usados pela configuração estão presentes no projeto.
 
-## 📸 Screenshots
+## 📸 Capturas
 
-> Add screenshots here later to showcase the launcher interface.
+> Adicione imagens aqui posteriormente para mostrar a interface do launcher.
 
-## 🚀 Next steps
+## 🚀 Próximos passos
 
-Possible improvements for future versions:
+Melhorias planejadas para versões futuras:
 
-- game filtering by genres or tags
-- recent games section
-- custom themes
-- support for launching external launch options
-- automatic updates
+- filtro por gênero ou tags
+- seção com jogos recentes
+- temas personalizáveis
+- suporte a opções extras de inicialização
+- atualização automática da aplicação
 
 ---
 
-If you want, I can also add a proper `LICENSE` file and a more advanced GitHub badge section.
+Se quiser, também posso adicionar um arquivo `LICENSE` e melhorar ainda mais a apresentação do repositório.
