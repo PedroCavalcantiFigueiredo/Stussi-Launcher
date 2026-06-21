@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QScrollArea, QGridLayout,
     QFrame, QGraphicsDropShadowEffect, QComboBox, QStackedWidget,
-    QGraphicsOpacityEffect
+    QGraphicsOpacityEffect, QMessageBox
 )
 from PySide6.QtCore import (
     Qt, Signal, QThread, QTimer, QObject, QRectF, QPropertyAnimation, QEasingCurve, QRect, Property
@@ -897,16 +897,46 @@ def add_to_startup():
         print(f"Failed to add to startup: {e}")
 
 def main():
-    add_to_startup()
-    os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    app.setFont(QFont("Segoe UI", 10))
-    if Path(ICON_PATH).is_file():
-        app.setWindowIcon(QIcon(ICON_PATH))
-    w = StussiLauncher()
-    w.show()
-    sys.exit(app.exec())
+    try:
+        add_to_startup()
+        os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
+
+        app = QApplication(sys.argv)
+        app.setStyle("Fusion")
+        app.setFont(QFont("Segoe UI", 10))
+
+        # Validate important runtime resources before showing the window.
+        required_assets = {
+            "logo": LOGO_PATH,
+            "icon": ICON_PATH,
+            "sound": str(RESOURCE_DIR / "somstussi.wav"),
+        }
+        missing = [path for name, path in required_assets.items() if not Path(path).is_file()]
+        if missing:
+            QMessageBox.critical(
+                None,
+                "Erro ao iniciar",
+                "Não foi possível localizar os arquivos necessários do aplicativo:\n" +
+                "\n".join(missing)
+            )
+            return 1
+
+        if Path(ICON_PATH).is_file():
+            app.setWindowIcon(QIcon(ICON_PATH))
+
+        w = StussiLauncher()
+        w.show()
+        return app.exec()
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
+        error_text = f"Erro ao iniciar o aplicativo:\n{exc}"
+        try:
+            app = QApplication.instance() or QApplication(sys.argv)
+            QMessageBox.critical(None, "Erro ao iniciar", error_text)
+        except Exception:
+            print(error_text)
+        return 1
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -1,16 +1,28 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from PyInstaller.utils.hooks import collect_data_files, collect_all
+
+qt_datas, qt_binaries, qt_hiddenimports = collect_all('PySide6')
+
+# Include runtime assets used by the UI.
+datas = [
+    ('stussi logo sem fundo.png', '.'),
+    ('somstussi.wav', '.'),
+    ('icon.ico', '.'),
+]
+datas += collect_data_files('PySide6')
+datas += qt_datas
+
+binaries = qt_binaries
+hiddenimports = qt_hiddenimports
+
 
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=[],
-    datas=[
-        ('stussi logo sem fundo.png', '.'),
-        ('somstussi.wav', '.'),
-        ('icon.ico', '.'),
-    ],
-    hiddenimports=[],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
