@@ -6,6 +6,7 @@ Supports Ultra-wide (multi-monitor) setups via centralized content container.
 Includes a professional fade-in/fade-out Splash Screen and sound.
 """
 
+import argparse
 import sys
 import os
 import winsound
@@ -15,7 +16,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QScrollArea, QGridLayout,
     QFrame, QGraphicsDropShadowEffect, QComboBox, QStackedWidget,
-    QGraphicsOpacityEffect, QMessageBox
+    QGraphicsOpacityEffect, QMessageBox, QSizePolicy
 )
 from PySide6.QtCore import (
     Qt, Signal, QThread, QTimer, QObject, QRectF, QPropertyAnimation, QEasingCurve, QRect, Property
@@ -108,19 +109,36 @@ class _Sig(QObject):
     done = Signal(str, QPixmap)
 
 class ImageWorker(QThread):
-    def __init__(self, app_id, url):
+    def __init__(self, app_id, urls):
         super().__init__()
-        self.app_id, self.url = app_id, url
+        self.app_id = app_id
+        self.urls = urls if isinstance(urls, (list, tuple)) else [urls]
         self.sig = _Sig()
 
     def run(self):
         try:
             import requests
-            r = requests.get(self.url, timeout=8)
-            px = QPixmap()
-            if r.status_code == 200:
-                px.loadFromData(r.content)
-            self.sig.done.emit(self.app_id, px)
+            headers = {
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/126.0 Safari/537.36"
+                )
+            }
+
+            for url in self.urls:
+                try:
+                    r = requests.get(url, timeout=10, allow_redirects=True, headers=headers)
+                    if r.status_code != 200:
+                        continue
+                    px = QPixmap()
+                    if px.loadFromData(r.content):
+                        self.sig.done.emit(self.app_id, px)
+                        return
+                except Exception:
+                    continue
+
+            self.sig.done.emit(self.app_id, QPixmap())
         except Exception:
             self.sig.done.emit(self.app_id, QPixmap())
 
@@ -297,10 +315,26 @@ class Header(QWidget):
         lay.setSpacing(14)
 
         self.logo_lbl = QLabel()
-        lp = QPixmap(LOGO_PATH)
-        if not lp.isNull():
-            self.logo_lbl.setPixmap(lp.scaledToHeight(150, Qt.SmoothTransformation))
-        self.logo_lbl.setStyleSheet("background:transparent;")
+        self.logo_lbl.setStyleSheet(
+            "background: transparent;"
+            "border: none;"
+            "padding: 0px;"
+            "margin: 0px;"
+        )
+        self.logo_lbl.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.logo_lbl.setAutoFillBackground(False)
+        self.logo_lbl.setContentsMargins(0, 0, 0, 0)
+        self.logo_lbl.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+        logo_pixmap = QPixmap(LOGO_PATH)
+        if not logo_pixmap.isNull():
+            # Preserve alpha channel explicitly for PNG assets.
+            img = logo_pixmap.toImage()
+            img = img.convertToFormat(QImage.Format_ARGB32_Premultiplied)
+            logo_pixmap = QPixmap.fromImage(img)
+            self.logo_lbl.setPixmap(
+                logo_pixmap.scaledToHeight(150, Qt.SmoothTransformation)
+            )
         lay.addWidget(self.logo_lbl)
 
         lay.addStretch(1)
@@ -544,11 +578,12 @@ class SplashOverlay(QWidget):
 # ─── Main Window ─────────────────────────────────────────────────────────────
 
 class StussiLauncher(QMainWindow):
-    def __init__(self):
+    def __init__(self, screen_index: int | None = None):
         super().__init__()
         self.setWindowTitle("Stussi Launcher")
         self.setMinimumSize(900, 600)
         self._is_fs = True
+        self._screen_index = screen_index
         
         self.games: list[SteamGame] = []
         self.cards: dict[str, GameCard] = {}
@@ -570,14 +605,18 @@ class StussiLauncher(QMainWindow):
 
     def _apply_fullscreen(self):
         self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)
+
         screens = QApplication.screens()
-        tr = screens[0].geometry()
-        for s in screens[1:]:
-            tr = tr.united(s.geometry())
-        self.setGeometry(tr)
+        if self._screen_index is not None and 0 <= self._screen_index < len(screens):
+            target_screen = screens[self._screen_index]
+        else:
+            target_screen = QApplication.primaryScreen() or screens[0]
+
+        geom = target_screen.geometry()
+        self.setGeometry(geom)
         self.show()
         if getattr(self, 'splash', None) is not None and self.splash.isVisible():
-            self.splash.setGeometry(0, 0, tr.width(), tr.height())
+            self.splash.setGeometry(0, 0, geom.width(), geom.height())
             self.splash.raise_()
         self.header.fs_btn.setText("🗗")
         if hasattr(self.header, 'bar'):
@@ -637,14 +676,18 @@ class StussiLauncher(QMainWindow):
         outer_layout = QHBoxLayout()
         outer_layout.setContentsMargins(0, 0, 0, 0)
         outer_layout.setSpacing(0)
-        
-        outer_layout.addStretch(1)
-        
+
         self.central_container = QWidget()
-        self.central_container.setMaximumWidth(2560)
-        
+        self.central_container.setObjectName("centralContainer")
+        self.central_container.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Expanding,
+        )
+        self.central_container.setMinimumWidth(920)
+        self.central_container.setMaximumWidth(1800)
+
         ml = QVBoxLayout(self.central_container)
-        ml.setContentsMargins(0, 0, 0, 0)
+        ml.setContentsMargins(8, 0, 8, 0)
         ml.setSpacing(0)
 
         self.stats = StatsBar()
@@ -659,24 +702,31 @@ class StussiLauncher(QMainWindow):
 
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QFrame.NoFrame)
         self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
         self.scroll.setFocusPolicy(Qt.NoFocus)
 
         self.grid_w = QWidget()
         self.grid_w.setStyleSheet("background:transparent;")
+        self.grid_w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.grid = QGridLayout(self.grid_w)
-        self.grid.setContentsMargins(32, 20, 32, 32)
-        self.grid.setSpacing(18)
-        self.grid.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        self.grid.setContentsMargins(28, 18, 28, 28)
+        self.grid.setHorizontalSpacing(22)
+        self.grid.setVerticalSpacing(22)
+        self.grid.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
         self.scroll.setWidget(self.grid_w)
+        self.scroll.setAlignment(Qt.AlignHCenter)
         self.stack.addWidget(self.scroll)
 
         ml.addWidget(self.stack, 1)
         self.stack.setCurrentWidget(self.loading)
         
-        outer_layout.addWidget(self.central_container, 2)
         outer_layout.addStretch(1)
-        
+        outer_layout.addWidget(self.central_container, 1)
+        outer_layout.addStretch(1)
+
         main_vbox.addLayout(outer_layout, 1)
 
     def _toggle_fullscreen(self):
@@ -821,10 +871,14 @@ class StussiLauncher(QMainWindow):
         g.sort(key=key_map.get(self._sort, lambda x: x.name.lower()), reverse=rev)
         return g
 
+    def _columns_for_width(self):
+        width = max(1, self.scroll.viewport().width() if self.scroll.viewport().width() else self.grid_w.width())
+        return max(1, (width - 64) // (CARD_W + 18))
+
     def _populate(self):
         self._clear()
         games = self._sorted()
-        cols = max(1, (self.grid_w.width() - 64) // (CARD_W + 18))
+        cols = self._columns_for_width()
         for i, game in enumerate(games):
             c = GameCard(game)
             c.launch.connect(self._launch)
@@ -842,7 +896,14 @@ class StussiLauncher(QMainWindow):
 
     def _load_images(self):
         for g in self.games:
-            w = ImageWorker(g.app_id, g.capsule_image_url)
+            image_urls = [
+                g.capsule_image_url,
+                g.header_image_url,
+                g.library_hero_url,
+                f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{g.app_id}/library_600x900_2x.jpg",
+                f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{g.app_id}/header.jpg",
+            ]
+            w = ImageWorker(g.app_id, image_urls)
             w.sig.done.connect(self._on_img)
             self.workers.append(w)
             w.start()
@@ -870,7 +931,7 @@ class StussiLauncher(QMainWindow):
 
     def _relayout(self):
         games = self._sorted()
-        cols = max(1, (self.grid_w.width() - 64) // (CARD_W + 18))
+        cols = self._columns_for_width()
         for i, g in enumerate(games):
             if g.app_id in self.cards:
                 c = self.cards[g.app_id]
@@ -898,6 +959,16 @@ def add_to_startup():
 
 def main():
     try:
+        parser = argparse.ArgumentParser(add_help=True)
+        parser.add_argument(
+            "--monitor",
+            "--screen",
+            type=int,
+            default=None,
+            help="Índice do monitor para abrir o app (0 para o primeiro, 1 para o segundo, etc.).",
+        )
+        args = parser.parse_args()
+
         add_to_startup()
         os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
 
@@ -924,7 +995,7 @@ def main():
         if Path(ICON_PATH).is_file():
             app.setWindowIcon(QIcon(ICON_PATH))
 
-        w = StussiLauncher()
+        w = StussiLauncher(screen_index=args.monitor)
         w.show()
         return app.exec()
     except Exception as exc:
